@@ -287,14 +287,14 @@ if __name__ == '__main__':
 			"dir::verilog/tt_um_all.v",
 		],
 		"EXTRA_LIBS": [
-			"pdk_dir::libs.ref/sg13g2_io/lib/sg13g2_io_dummy.lib",
+			"pdk_dir::libs.ref/sg13cmos5l_io/lib/sg13cmos5l_io_dummy.lib",
 		],
 		"EXTRA_LEFS": [
-			"pdk_dir::libs.ref/sg13g2_io/lef/sg13g2_io.lef",
+			"pdk_dir::libs.ref/sg13cmos5l_io/lef/sg13cmos5l_io.lef",
 			"dir::lef/bondpad_70x70.lef",
 		],
 		"EXTRA_GDS_FILES": [
-			"pdk_dir::libs.ref/sg13g2_io/gds/sg13g2_io.gds",
+			"pdk_dir::libs.ref/sg13cmos5l_io/gds/sg13cmos5l_io.gds",
 			"dir::gds/bondpad_70x70.gds",
 		],
 
@@ -343,14 +343,14 @@ if __name__ == '__main__':
 		# Routing
 		"GRT_ALLOW_CONGESTION"  : True,
 		"GRT_REPAIR_ANTENNAS"   : False,
-		"RT_MAX_LAYER"          : "Metal5",
+		"RT_MAX_LAYER"          : "TopMetal1",
 
 		# Magic stream
 		"MAGIC_ZEROIZE_ORIGIN" : False,
 
 		# DRC
 		"MAGIC_DRC_USE_GDS": True,
-		"KLAYOUT_DRC_RUNSET": "pdk_dir::libs.tech/klayout/tech/drc/sg13g2_minimal.lydrc",
+		"KLAYOUT_DRC_RUNSET": "pdk_dir::libs.tech/klayout/tech/drc/sg13cmos5l_minimal.lydrc",
 
 		# LVS
 		"MAGIC_DEF_LABELS" : False,

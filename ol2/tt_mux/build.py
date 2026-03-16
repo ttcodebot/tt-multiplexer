@@ -135,7 +135,7 @@ if __name__ == '__main__':
 		# Routing
 		"DIODE_PADDING"        : 0,
 		"GRT_ALLOW_CONGESTION" : True,
-		"RT_MAX_LAYER"         : "Metal5",
+		"RT_MAX_LAYER"         : "Metal4",
 
 		# LEF generation option
 		"MAGIC_LEF_WRITE_USE_GDS" : False,	# Workaround LEF/GDS pin naming issue
