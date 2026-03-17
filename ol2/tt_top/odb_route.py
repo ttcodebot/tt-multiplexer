@@ -34,9 +34,9 @@ class Router:
 		# Find useful data
 		tech = reader.db.getTech()
 
-		self.layer_h = tech.findLayer('Metal5')
-		self.layer_v = tech.findLayer('Metal4')
-		self.via     = tech.findVia('Via4_YX')
+		self.layer_h = tech.findLayer('Metal4')
+		self.layer_v = tech.findLayer('Metal3')
+		self.via     = tech.findVia('Via3')
 
 		self.x_spine = []
 		self.y_muxes = {}
@@ -829,7 +829,7 @@ class ModulePowerStrapper:
 		tech = reader.db.getTech()
 
 		self.vg = ViaGenerator(self.reader, 'viagen67')
-		self.layer = tech.findLayer('TopMetal2')
+		self.layer = tech.findLayer('TopMetal1')
 
 		self.stripe_space, self.stripe_width = self._find_stripe_space_width()
 		self.space = 5000
@@ -841,7 +841,7 @@ class ModulePowerStrapper:
 		stripes = [
 			w for w in sw.getWires() if (
 				not w.isVia() and
-				w.getTechLayer().getName() == 'TopMetal2' and
+				w.getTechLayer().getName() == 'TopMetal1' and
 				w.getWireShapeType() == 'STRIPE'
 			)
 		]
@@ -1703,14 +1703,14 @@ class PadRingPowerStrapper:
 		# Find useful data
 		self.tech = tech = reader.db.getTech()
 
-		self.layer = tech.findLayer('TopMetal2')
+		self.layer = tech.findLayer('TopMetal1')
 		self.viagen = ViaGenerator(reader, 'viagen67')
 
 
 	def find_padring_obstruction(self):
-		# sg13g2_IOPadVdd instances have TopMetal2 in the way, don't create
+		# sg13cmos5l_IOPadVdd instances have TopMetal1 in the way, don't create
 		# straps if there is an instance there
-		blacklist = { 'sg13g2_IOPadVdd' }
+		blacklist = { 'sg13cmos5l_IOPadVdd' }
 
 		bad_insts = [
 			inst for inst in self.reader.block.getInsts()
@@ -1735,7 +1735,7 @@ class PadRingPowerStrapper:
 		self.fill_right = None
 
 		for inst in self.reader.block.getInsts():
-			if not inst.getMaster().getName().startswith('sg13g2_Filler'):
+			if not inst.getMaster().getName().startswith('sg13cmos5l_Filler'):
 				continue
 
 			if inst.getOrient() == "R90":

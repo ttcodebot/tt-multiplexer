@@ -106,15 +106,15 @@ for {set side_idx 0} {$side_idx < $MAX_NUM_PADS_VERTICAL} {incr side_idx} {
 }
 
 # Place Corner Cells and Filler
-place_corners sg13g2_Corner
+place_corners sg13cmos5l_Corner
 
 set iofill {
-    sg13g2_Filler10000
-    sg13g2_Filler4000
-    sg13g2_Filler2000
-    sg13g2_Filler1000
-    sg13g2_Filler400
-    sg13g2_Filler200
+    sg13cmos5l_Filler10000
+    sg13cmos5l_Filler4000
+    sg13cmos5l_Filler2000
+    sg13cmos5l_Filler1000
+    sg13cmos5l_Filler400
+    sg13cmos5l_Filler200
 }
 
 place_io_fill -row IO_NORTH {*}$iofill
