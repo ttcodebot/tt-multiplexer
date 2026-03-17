@@ -183,7 +183,6 @@ class TopFlow(SequentialFlow):
 		OpenROAD.RCX,
 		OpenROAD.STAPostPNR,
 		OpenROAD.IRDropReport,
-		Magic.StreamOut,
 		KLayout.StreamOut,
 		KLayout.XOR,
 		Checker.XOR,

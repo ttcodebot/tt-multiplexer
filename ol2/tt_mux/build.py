@@ -70,21 +70,11 @@ class MuxFlow(SequentialFlow):
 		OpenROAD.IRDropReport,
 		OpenROAD.WriteAbstractLEF,
 		OpenROAD.WriteCDL,
-		Magic.StreamOut,
-		Magic.WriteLEF,
 		KLayout.StreamOut,
 		KLayout.XOR,
 		Checker.XOR,
-		Magic.DRC,
-		Checker.MagicDRC,
 		KLayout.DRC,
 		Checker.KLayoutDRC,
-		Magic.SpiceExtraction,
-		Checker.IllegalOverlap,
-		Netgen.LVS,
-		Checker.LVS,
-		KLayout.LVS,
-		Checker.LVS,
 	]
 
 
