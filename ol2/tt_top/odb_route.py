@@ -835,7 +835,7 @@ class ModulePowerStrapper:
 		self.space = 5000
 
 	def _find_stripe_space_width(self):
-		# Get all `met5` stripes for VGND
+		# Get all `TopMetal1` stripes for VGND
 		net = self.reader.block.findNet('vgnd')
 		sw = net.getSWires()[0]
 		stripes = [
@@ -1177,11 +1177,11 @@ class AnalogRouter:
 		self.via = viagen.create(3, 3, 'analog_via')
 
 		# Create via generator for power
-		self.pwr_vg = ViaGenerator(self.reader, 'M4M5_PR')
+		self.pwr_vg = ViaGenerator(self.reader, 'viagen45')
 
 		# Create non-default rule
 		self.ndr = ndr = odb.dbTechNonDefaultRule_create(self.reader.block, 'analog_track')
-		for ln in [ 'li1', 'met1', 'met2', 'met3', 'met4', 'met5' ]:
+		for ln in [ 'li1', 'met1', 'met2', 'met3', 'met4' ]:
 			ly = tech.findLayer(ln)
 			lr = odb.dbTechLayerRule_create(ndr, ly)
 			lr.setWidth(900)
