@@ -3,7 +3,7 @@ BUSBITCHARS "[]" ;
 DIVIDERCHAR "/" ;
 
 MACRO bondpad_70x70
-    CLASS COVER BUMP ;
+    CLASS COVER ;
     ORIGIN 0.000 0.000 ;
     FOREIGN bondpad_70x70 0.000 0.000 ;
     SIZE 70.000 BY 70.000 ;
