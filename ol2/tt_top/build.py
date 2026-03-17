@@ -347,7 +347,7 @@ if __name__ == '__main__':
 
 		# DRC
 		"MAGIC_DRC_USE_GDS": True,
-		"KLAYOUT_DRC_RUNSET": "pdk_dir::libs.tech/klayout/tech/drc/sg13cmos5l_minimal.lydrc",
+		"KLAYOUT_DRC_RUNSET": "pdk_dir::libs.tech/klayout/tech/drc/ihp-sg13cmos5l.drc",
 
 		# LVS
 		"MAGIC_DEF_LABELS" : False,
