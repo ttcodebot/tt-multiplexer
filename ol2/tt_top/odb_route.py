@@ -36,7 +36,7 @@ class Router:
 
 		self.layer_h = tech.findLayer('Metal4')
 		self.layer_v = tech.findLayer('Metal3')
-		self.via     = tech.findVia('Via3')
+		self.via     = tech.findVia('Via3_YX')
 
 		self.x_spine = []
 		self.y_muxes = {}
@@ -828,7 +828,7 @@ class ModulePowerStrapper:
 		# Find useful data
 		tech = reader.db.getTech()
 
-		self.vg = ViaGenerator(self.reader, 'viagen67')
+		self.vg = ViaGenerator(self.reader, 'viagen45')
 		self.layer = tech.findLayer('TopMetal1')
 
 		self.stripe_space, self.stripe_width = self._find_stripe_space_width()
@@ -1704,7 +1704,7 @@ class PadRingPowerStrapper:
 		self.tech = tech = reader.db.getTech()
 
 		self.layer = tech.findLayer('TopMetal1')
-		self.viagen = ViaGenerator(reader, 'viagen67')
+		self.viagen = ViaGenerator(reader, 'viagen45')
 
 
 	def find_padring_obstruction(self):
