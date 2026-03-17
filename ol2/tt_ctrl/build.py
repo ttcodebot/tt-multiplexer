@@ -71,8 +71,6 @@ class CtrlFlow(SequentialFlow):
 		OpenROAD.WriteAbstractLEF,
 		OpenROAD.WriteCDL,
 		KLayout.StreamOut,
-		KLayout.XOR,
-		Checker.XOR,
 		KLayout.DRC,
 		Checker.KLayoutDRC,
 	]

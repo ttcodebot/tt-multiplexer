@@ -184,8 +184,6 @@ class TopFlow(SequentialFlow):
 		OpenROAD.STAPostPNR,
 		OpenROAD.IRDropReport,
 		KLayout.StreamOut,
-		KLayout.XOR,
-		Checker.XOR,
 
 		IHPExtractSpice,
 		Netgen.LVS,
