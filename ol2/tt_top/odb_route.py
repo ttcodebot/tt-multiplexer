@@ -314,7 +314,7 @@ class Router:
 	def route_um_signals(self):
 		# Get via
 		tech = self.reader.db.getTech()
-		via = tech.findVia('Via4_YY')
+		via = tech.findVia('Via3_YY')
 
 		# Scan all the user modules
 		for um_inst in self.reader.instances:
