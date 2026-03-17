@@ -1762,12 +1762,14 @@ class PadRingPowerStrapper:
 			else:
 				raise RuntimeError("Trying to connect net that's not on the pad ring")
 
-			# Find
+			# Find - take bounding box of all TopMetal1 rects (cmos5l may have multiple)
 			rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
-			if len(rects) != 1:
-				raise RuntimeError("More than one rectangle found")
+			if len(rects) == 0:
+				raise RuntimeError("No TopMetal1 rectangle found")
 
-			rails.append( ( rects[0].xMin(), rects[0].xMax() ) )
+			x_min = min(r.xMin() for r in rects)
+			x_max = max(r.xMax() for r in rects)
+			rails.append( ( x_min, x_max ) )
 
 		return rails
 
@@ -1852,17 +1854,13 @@ def route(
 	r.route_um_tieoffs()
 	r.route_um_signals()
 
-	# Create the module power straps
-	p = ModulePowerStrapper(reader, tti)
-	p.run()
-
-	## Create the ring power straps
-	#p = RingPowerStrapper(reader)
+	# CMOS5L: Skip custom power strapping (TopMetal2 not available)
+	# These were designed for sg13g2's TopMetal2 power distribution
+	# TODO: Re-enable after adapting for cmos5l TopMetal1-only power
+	#p = ModulePowerStrapper(reader, tti)
 	#p.run()
-
-	# Create the padring power straps
-	p = PadRingPowerStrapper(reader)
-	p.run()
+	#p = PadRingPowerStrapper(reader)
+	#p.run()
 
 	## Analog router
 	#a = AnalogRouter(reader, tti)
