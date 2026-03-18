@@ -194,8 +194,7 @@ class TopFlow(SequentialFlow):
 		KLayout.DRC,
 		Checker.KLayoutDRC,
 
-		# CMOS5L: Skip seal ring (pycell4klayout-api submodule not initialized)
-		# IHPSealRing,
+		IHPSealRing,
 	]
 
 
