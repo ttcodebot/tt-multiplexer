@@ -58,12 +58,12 @@ pdk:
         width:  200
     TopMetal1:
       x:
-        offset: 1700
-        pitch:  3400
+        offset: 1640
+        pitch:  2280
         width:  1600
       y:
-        offset: 1700
-        pitch:  3400
+        offset: 1640
+        pitch:  2280
         width:  1600
 tt:
   grid:
