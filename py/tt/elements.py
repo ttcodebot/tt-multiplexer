@@ -281,9 +281,9 @@ class Block(LayoutElement):
 			(mh - 1) * layout.glb.margin.y
 		)
 
-		# Power gating offset
-		if pg_vdd:
-			width -= layout.glb.pg_vdd.offset
+		# Power gating offset — always subtract to match tile DEF width
+		# (reserves space for power gate even when not present)
+		width -= layout.glb.pg_vdd.offset
 
 		if pg_vaa:
 			width -= layout.glb.pg_vaa.offset
