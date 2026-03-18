@@ -181,7 +181,7 @@ class TopFlow(SequentialFlow):
 		Odb.ReportWireLength,
 		Checker.WireLength,
 		OpenROAD.RCX,
-		OpenROAD.STAPostPNR,
+		# OpenROAD.STAPostPNR,  # SPEF parsing error in sta tool
 		# CMOS5L: Skip IRDropReport (PDN connectivity incomplete without TopMetal2)
 		# OpenROAD.IRDropReport,
 		KLayout.StreamOut,
