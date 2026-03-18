@@ -186,10 +186,9 @@ class TopFlow(SequentialFlow):
 		# OpenROAD.IRDropReport,
 		KLayout.StreamOut,
 
-		# CMOS5L: Skip LVS (SPICE extraction layer stack needs rework for 5-layer)
-		# IHPExtractSpice,
-		# Netgen.LVS,
-		# Checker.LVS,
+		IHPExtractSpice,
+		Netgen.LVS,
+		Checker.LVS,
 
 		KLayout.DRC,
 		Checker.KLayoutDRC,
