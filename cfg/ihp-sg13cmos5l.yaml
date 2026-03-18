@@ -82,8 +82,8 @@ tt:
     o:   8
     io:  8
   spine:
-    vlayer: 'Metal3'
-    hlayer: 'Metal4'
+    vlayer: 'Metal4'
+    hlayer: 'Metal3'
   analog: []
   huge_modules:
     mux_id: [ 6, 11, 12 ]

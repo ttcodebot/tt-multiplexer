@@ -34,9 +34,9 @@ class Router:
 		# Find useful data
 		tech = reader.db.getTech()
 
-		self.layer_h = tech.findLayer('Metal4')
-		self.layer_v = tech.findLayer('Metal3')
-		self.via     = tech.findVia('Via3_YX')
+		self.layer_h = tech.findLayer('Metal3')
+		self.layer_v = tech.findLayer('Metal4')
+		self.via     = tech.findVia('Via3_XY')
 
 		self.x_spine = []
 		self.y_muxes = {}
