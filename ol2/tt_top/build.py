@@ -81,6 +81,44 @@ class PadRing(OpenROADStep):
 
 
 @Step.factory.register()
+class AddRoutingToGDS(Step):
+
+	id = "TT.IHP.AddRouting"
+	name = "Adds DEF routing wires to KLayout GDS"
+
+	inputs = [DesignFormat.GDS, DesignFormat.DEF]
+	outputs = [DesignFormat.GDS]
+
+	def run(self, state_in: State, **kwargs) -> Tuple[ViewsUpdate, MetricsUpdate]:
+		views_updates: ViewsUpdate = {}
+
+		input_gds = state_in[DesignFormat.GDS]
+		input_def = state_in[DesignFormat.DEF]
+		output_gds = os.path.join(
+			self.step_dir,
+			f"{self.config['DESIGN_NAME']}.{DesignFormat.GDS.extension}"
+		)
+
+		script = os.path.join(
+			os.path.dirname(__file__),
+			"../../py/add_routing_to_gds.py"
+		)
+
+		self.run_subprocess(
+			[
+				script,
+				abspath(input_gds),
+				abspath(input_def),
+				abspath(output_gds),
+			],
+		)
+
+		views_updates[DesignFormat.GDS] = Path(output_gds)
+
+		return views_updates, {}
+
+
+@Step.factory.register()
 class IHPExtractSpice(Step):
 
 	id = "TT.IHP.ExtractSpice"
@@ -185,6 +223,7 @@ class TopFlow(SequentialFlow):
 		# CMOS5L: Skip IRDropReport (PDN connectivity incomplete without TopMetal2)
 		# OpenROAD.IRDropReport,
 		KLayout.StreamOut,
+		AddRoutingToGDS,
 
 		IHPExtractSpice,
 		Netgen.LVS,
