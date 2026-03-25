@@ -337,11 +337,11 @@ class Router:
 			um_bbox  = um_inst.getBBox()
 
 			if mux_bbox.yMin() > um_bbox.yMax():
-				y_um  = um_bbox.yMax()
-				y_mux = mux_bbox.yMin()
+				y_um  = um_bbox.yMax() - 500   # extend into tile to overlap pin
+				y_mux = mux_bbox.yMin() + 500   # extend into mux to overlap pin
 			else:
-				y_um  = um_bbox.yMin()
-				y_mux = mux_bbox.yMax()
+				y_um  = um_bbox.yMin() + 500
+				y_mux = mux_bbox.yMax() - 500
 
 			# Scan every connection
 			for um_it in um_inst.getITerms():
