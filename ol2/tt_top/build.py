@@ -222,8 +222,10 @@ class TopFlow(SequentialFlow):
 		# OpenROAD.STAPostPNR,  # SPEF parsing error in sta tool
 		# CMOS5L: Skip IRDropReport (PDN connectivity incomplete without TopMetal2)
 		# OpenROAD.IRDropReport,
+		Magic.StreamOut,
 		KLayout.StreamOut,
-		AddRoutingToGDS,
+		KLayout.XOR,
+		Checker.XOR,
 
 		IHPExtractSpice,
 		Netgen.LVS,
