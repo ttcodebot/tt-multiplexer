@@ -55,6 +55,20 @@ class CustomPower(OdbpyStep):
 
 
 @Step.factory.register()
+class UnplaceShapelessBTerms(OdbpyStep):
+
+	id = "TT.Top.UnplaceShapelessBTerms"
+	name = "Unplace BTerms without physical shapes (DPL-0386 fix)"
+
+	def get_script_path(self):
+		return os.path.join(
+			os.path.dirname(__file__),
+			"odb_unplace_shapeless_bterms.py"
+		)
+
+
+
+@Step.factory.register()
 class CustomRoute(OdbpyStep):
 
 	id = "TT.Top.CustomRoute"
@@ -209,6 +223,7 @@ class TopFlow(SequentialFlow):
 		Odb.ManualMacroPlacement,
 		OpenROAD.GeneratePDN,
 		OpenROAD.GlobalPlacement,
+		UnplaceShapelessBTerms,
 		OpenROAD.DetailedPlacement,
 		CustomRoute,
 		OpenROAD.GlobalRouting,
