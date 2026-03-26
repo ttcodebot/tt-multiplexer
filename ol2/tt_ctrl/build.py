@@ -68,7 +68,7 @@ class CtrlFlow(SequentialFlow):
 		OpenROAD.RCX,
 		OpenROAD.STAPostPNR,
 		OpenROAD.IRDropReport,
-		OpenROAD.WriteAbstractLEF,
+		OpenROAD.WriteViews,
 		OpenROAD.WriteCDL,
 		KLayout.StreamOut,
 		KLayout.DRC,
