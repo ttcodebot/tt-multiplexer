@@ -68,7 +68,7 @@ class MuxFlow(SequentialFlow):
 		OpenROAD.RCX,
 		OpenROAD.STAPostPNR,
 		OpenROAD.IRDropReport,
-		OpenROAD.WriteViews,
+		OpenROAD.WriteAbstractLEF,
 		OpenROAD.WriteCDL,
 		KLayout.StreamOut,
 		KLayout.DRC,
