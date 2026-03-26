@@ -1854,13 +1854,13 @@ def route(
 	r.route_um_tieoffs()
 	r.route_um_signals()
 
-	# CMOS5L: Skip custom power strapping (TopMetal2 not available)
-	# These were designed for sg13g2's TopMetal2 power distribution
-	# TODO: Re-enable after adapting for cmos5l TopMetal1-only power
-	#p = ModulePowerStrapper(reader, tti)
-	#p.run()
-	#p = PadRingPowerStrapper(reader)
-	#p.run()
+	# Create the module power straps
+	p = ModulePowerStrapper(reader, tti)
+	p.run()
+
+	# Create the padring power straps
+	p = PadRingPowerStrapper(reader)
+	p.run()
 
 	## Analog router
 	#a = AnalogRouter(reader, tti)
