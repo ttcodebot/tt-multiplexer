@@ -1,14 +1,11 @@
 #
-# OpenDB script to remove BTerms that have no shapes.
-# This prevents DPL-0386 errors in newer OpenROAD versions.
+# OpenDB script to destroy BTerms without physical connections.
+# Prevents DPL-0386 errors in newer OpenROAD/LibreLane versions.
 #
-# In the TT IHP wrapper, pad_raw[] BTerms are top-level ports that connect
-# internally to GPIO pad instances. Some of these BTerms (e.g., power pads)
-# end up without physical pin shapes after pad ring creation, which causes
-# OpenROAD DetailedPlacement to error with DPL-0386.
-#
-# Copyright (c) 2026 TinyTapeout contributors
-# SPDX-License-Identifier: Apache-2.0
+# In the TT IHP wrapper, some pad_raw[] BTerms (power/ground/NC pads)
+# have no physical pin shapes because their IO cells don't connect to
+# pad_raw. Destroying these disconnected BTerms before DetailedPlacement
+# avoids the DPL-0386 "BTerm has no shapes" fatal error.
 #
 
 import odb
@@ -19,35 +16,26 @@ from reader import click_odb
 
 @click.command()
 @click_odb
-def unplace_shapeless_bterms(reader):
-    block = reader.block
-    count = 0
+def remove_shapeless_bterms(reader):
+	block = reader.block
+	bt_to_del = []
 
-    # Collect BTerms to destroy (can't modify while iterating)
-    to_destroy = []
-    for bterm in block.getBTerms():
-        net = bterm.getNet()
-        # Skip supply nets (they're already handled by DPL)
-        if not net or net.getSigType() in ("POWER", "GROUND"):
-            continue
-        # Check if BTerm has any shapes
-        pins = bterm.getBPins()
-        has_shapes = False
-        for pin in pins:
-            if len(pin.getBoxes()) > 0:
-                has_shapes = True
-                break
-        if not has_shapes:
-            to_destroy.append(bterm)
+	for bterm in block.getBTerms():
+		# Check if this BTerm has any pin shapes
+		has_shapes = False
+		for bpin in bterm.getBPins():
+			if len(bpin.getBoxes()) > 0:
+				has_shapes = True
+				break
 
-    for bterm in to_destroy:
-        name = bterm.getName()
-        odb.dbBTerm.destroy(bterm)
-        count += 1
-        print(f"  Destroyed shapeless BTerm: {name}")
+		if not has_shapes:
+			bt_to_del.append(bterm)
 
-    print(f"Destroyed {count} shapeless BTerms")
+	for bt in bt_to_del:
+		odb.dbBTerm.destroy(bt)
+
+	print(f"  Destroyed {len(bt_to_del)} shapeless BTerms")
 
 
 if __name__ == "__main__":
-    unplace_shapeless_bterms()
+	remove_shapeless_bterms()
