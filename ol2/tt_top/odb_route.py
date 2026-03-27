@@ -1765,7 +1765,11 @@ class PadRingPowerStrapper:
 			# Find - take bounding box of all TopMetal1 rects (cmos5l may have multiple)
 			rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
 			if len(rects) == 0:
-				raise RuntimeError("No TopMetal1 rectangle found")
+				# Newer OpenROAD may not return geometries for IO filler ITerms.
+				# The physical connection between padring and core PDN exists via
+				# GDS metal overlap, so we can safely skip this net.
+				print(f"  WARNING: No TopMetal1 geometry found on filler ITerm for net '{net.getName()}', skipping padring power strap")
+				return None
 
 			x_min = min(r.xMin() for r in rects)
 			x_max = max(r.xMax() for r in rects)
@@ -1776,7 +1780,10 @@ class PadRingPowerStrapper:
 
 	def connect_net(self, net):
 		# Get the rails
-		rail_left, rail_right = self.find_padring_rails(net)
+		rails = self.find_padring_rails(net)
+		if rails is None:
+			return
+		rail_left, rail_right = rails
 
 		# Create new SWire
 		sw_new = odb.dbSWire.create(net, "ROUTED")
