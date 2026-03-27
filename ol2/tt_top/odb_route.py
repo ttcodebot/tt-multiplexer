@@ -1801,9 +1801,12 @@ class PadRingPowerStrapper:
 			if side == 'right' and orient != 'R90':
 				continue
 
-			# Find the net's ITerm on this filler
-			for it in net.getITerms():
-				if it.getInst().this != inst.this:
+			# Search the filler instance's ITerms (few) rather than the
+			# net's ITerms (thousands for power nets)
+			net_name = net.getName()
+			for it in inst.getITerms():
+				it_net = it.getNet()
+				if it_net is None or it_net.getName() != net_name:
 					continue
 
 				# Try instance-level geometry first
@@ -1824,7 +1827,7 @@ class PadRingPowerStrapper:
 					if x_max is None or r.xMax() > x_max:
 						x_max = r.xMax()
 
-				break  # found this inst's ITerm
+				break  # found the matching ITerm
 
 		return x_min, x_max
 
