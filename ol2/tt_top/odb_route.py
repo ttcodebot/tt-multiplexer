@@ -1703,8 +1703,13 @@ class PadRingPowerStrapper:
 		# Find useful data
 		self.tech = tech = reader.db.getTech()
 
-		self.layer = tech.findLayer('TopMetal1')
-		self.viagen = ViaGenerator(reader, 'viagen45')
+		# In cmos5l, the padring filler TopMetal1 is on iovdd/iovss (IO power).
+		# Core power (vdpwr/vgnd) filler pins are on Metal3/Metal4 only.
+		# We must bridge using Metal4 to avoid shorting core↔IO power domains.
+		self.layer = tech.findLayer('Metal4')
+		# No via needed — we're extending the M4 PDN ring to overlap
+		# with the filler M4 vdd/vss pins
+		self.viagen = None
 
 
 	def find_padring_obstruction(self):
@@ -1753,45 +1758,31 @@ class PadRingPowerStrapper:
 	def find_padring_rails(self, net):
 		# For each find the limits
 		rails = []
+		layer_name = self.layer.getName()
 
 		for inst in [self.fill_left, self.fill_right]:
-			# In cmos5l, the filler cell's vdd/vss pins only have Metal3/Metal4.
-			# TopMetal1 geometry is on the iovdd/iovss pins (IO power domain).
-			# We use the iovdd TopMetal1 geometry to determine the rail position,
-			# since the physical TM1 power rail is continuous across iovdd/iovss/vdd
-			# pins via abutment in the GDS (even though LEF separates them).
 			rects = []
 
-			# First try the target net's ITerm on this filler
+			# Find the target net's ITerm on this filler and get geometry
 			for it in net.getITerms():
 				if it.getInst().this == inst.this:
-					rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
-					if rects:
-						break
-
-			# If no TM1 on the target net, find TM1 from any power ITerm on this filler
-			if not rects:
-				for it in inst.getITerms():
-					if it.getSigType() not in ['POWER', 'GROUND']:
-						continue
-					# Try getGeometries first
-					rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
-					if rects:
-						break
-					# Fall back to master cell pin geometry
-					mterm = it.getMTerm()
-					transform = inst.getTransform()
-					for mpin in mterm.getMPins():
-						for geom in mpin.getGeometry():
-							if geom.getTechLayer().getName() == "TopMetal1":
-								r = geom.getBox()
-								r = transform.apply(r)
-								rects.append(r)
-					if rects:
-						break
+					rects = [ r for (l,r) in it.getGeometries() if l.getName() == layer_name ]
+					if not rects:
+						# Fall back to master cell pin geometry
+						mterm = it.getMTerm()
+						transform = inst.getTransform()
+						for mpin in mterm.getMPins():
+							for geom in mpin.getGeometry():
+								if geom.getTechLayer().getName() == layer_name:
+									r = geom.getBox()
+									r = transform.apply(r)
+									rects.append(r)
+					break
+			else:
+				raise RuntimeError("Trying to connect net that's not on the pad ring")
 
 			if not rects:
-				raise RuntimeError(f"No TopMetal1 geometry found on any power ITerm of filler for net '{net.getName()}'")
+				raise RuntimeError(f"No {layer_name} geometry found on filler ITerm for net '{net.getName()}'")
 
 			x_min = min(r.xMin() for r in rects)
 			x_max = max(r.xMax() for r in rects)
@@ -1807,35 +1798,36 @@ class PadRingPowerStrapper:
 		# Create new SWire
 		sw_new = odb.dbSWire.create(net, "ROUTED")
 
-		# Scan all stripes
+		# Scan all existing stripes on the bridge layer (Metal4)
 		for sw in net.getSWires():
 			for w in sw.getWires():
-				# Only stripes
+				# Only stripes on our bridge layer
 				if w.isVia():
 					continue
-
 				if w.getWireShapeType() != 'STRIPE':
 					continue
+				if w.getTechLayer().getName() != self.layer.getName():
+					continue
 
-				# Process each rails
+				# Process each side (left and right)
 				y = (w.yMin() + w.yMax()) // 2
 				h = w.getDY()
 
 				data = [
-					( rail_left[0], w.xMin(),  rail_left[0],  rail_left[1],  self.obs_left  ),
-					( w.xMax(), rail_right[1], rail_right[0], rail_right[1], self.obs_right ),
+					( rail_left[0], w.xMin(),  self.obs_left  ),
+					( w.xMax(), rail_right[1], self.obs_right ),
 				]
 
-				for x0, x1, xv0, xv1, obs in data:
+				for x0, x1, obs in data:
 					# Check for obstructions
 					if any([ (obs_y1 >= w.yMin()) and (obs_y0 <= w.yMax()) for obs_y0, obs_y1 in obs]):
 						continue
 
-					# Add via
-					via = self.viagen.get4sz_ext(xv1 - xv0, h, bot_fit='xy', top_fit='y')
-					odb.createSBoxes(sw_new, via, [odb.Point((xv0 + xv1) // 2, y)], "STRIPE")
+					# Skip if stripe would be zero or negative width
+					if x0 >= x1:
+						continue
 
-					# Add stripe
+					# Add Metal4 stripe extending from PDN ring to filler cell
 					stripe_rect = odb.Rect(x0, w.yMin(), x1, w.yMax())
 					odb.createSBoxes(sw_new, self.layer, [stripe_rect], "STRIPE")
 
