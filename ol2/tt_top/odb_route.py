@@ -1802,9 +1802,10 @@ class PadRingPowerStrapper:
 				continue
 
 			orient = inst.getOrient()
-			if side == 'left' and orient not in ('MXR90', 'FW'):
+			# DEF "FW" = ODB "MXR90" (west/left), DEF "W" = ODB "R90" (east/right)
+			if side == 'left' and orient != 'MXR90':
 				continue
-			if side == 'right' and orient not in ('R90', 'W'):
+			if side == 'right' and orient != 'R90':
 				continue
 
 			# Find the net's ITerm on this filler
