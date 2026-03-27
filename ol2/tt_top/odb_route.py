@@ -828,7 +828,7 @@ class ModulePowerStrapper:
 		# Find useful data
 		tech = reader.db.getTech()
 
-		self.vg = ViaGenerator(self.reader, 'viagen45')
+		self.vg = ViaGenerator(self.reader, 'viaTop1Array')
 		self.layer = tech.findLayer('TopMetal1')
 
 		self.stripe_space, self.stripe_width = self._find_stripe_space_width()
@@ -1177,7 +1177,7 @@ class AnalogRouter:
 		self.via = viagen.create(3, 3, 'analog_via')
 
 		# Create via generator for power
-		self.pwr_vg = ViaGenerator(self.reader, 'viagen45')
+		self.pwr_vg = ViaGenerator(self.reader, 'viaTop1Array')
 
 		# Create non-default rule
 		self.ndr = ndr = odb.dbTechNonDefaultRule_create(self.reader.block, 'analog_track')
