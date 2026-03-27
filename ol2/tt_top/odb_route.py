@@ -1755,29 +1755,43 @@ class PadRingPowerStrapper:
 		rails = []
 
 		for inst in [self.fill_left, self.fill_right]:
-			# Find the matching ITerm on the net
+			# In cmos5l, the filler cell's vdd/vss pins only have Metal3/Metal4.
+			# TopMetal1 geometry is on the iovdd/iovss pins (IO power domain).
+			# We use the iovdd TopMetal1 geometry to determine the rail position,
+			# since the physical TM1 power rail is continuous across iovdd/iovss/vdd
+			# pins via abutment in the GDS (even though LEF separates them).
+			rects = []
+
+			# First try the target net's ITerm on this filler
 			for it in net.getITerms():
 				if it.getInst().this == inst.this:
-					break
-			else:
-				raise RuntimeError("Trying to connect net that's not on the pad ring")
+					rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
+					if rects:
+						break
 
-			# Find - take bounding box of all TopMetal1 rects (cmos5l may have multiple)
-			rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
-			if len(rects) == 0:
-				# Newer OpenROAD may not return placed geometries for IO filler
-				# ITerms. Fall back to reading master cell pin geometry and
-				# transforming via the instance placement.
-				mterm = it.getMTerm()
-				transform = inst.getTransform()
-				for mpin in mterm.getMPins():
-					for geom in mpin.getGeometry():
-						if geom.getTechLayer().getName() == "TopMetal1":
-							r = geom.getBox()
-							r = transform.apply(r)
-							rects.append(r)
-				if len(rects) == 0:
-					raise RuntimeError(f"No TopMetal1 geometry found on filler ITerm for net '{net.getName()}'")
+			# If no TM1 on the target net, find TM1 from any power ITerm on this filler
+			if not rects:
+				for it in inst.getITerms():
+					if it.getSigType() not in ['POWER', 'GROUND']:
+						continue
+					# Try getGeometries first
+					rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
+					if rects:
+						break
+					# Fall back to master cell pin geometry
+					mterm = it.getMTerm()
+					transform = inst.getTransform()
+					for mpin in mterm.getMPins():
+						for geom in mpin.getGeometry():
+							if geom.getTechLayer().getName() == "TopMetal1":
+								r = geom.getBox()
+								r = transform.apply(r)
+								rects.append(r)
+					if rects:
+						break
+
+			if not rects:
+				raise RuntimeError(f"No TopMetal1 geometry found on any power ITerm of filler for net '{net.getName()}'")
 
 			x_min = min(r.xMin() for r in rects)
 			x_max = max(r.xMax() for r in rects)
