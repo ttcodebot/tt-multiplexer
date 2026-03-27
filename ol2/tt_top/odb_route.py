@@ -1827,9 +1827,10 @@ class PadRingPowerStrapper:
 					if x0 >= x1:
 						continue
 
-					# Add Metal4 stripe extending from PDN ring to filler cell
-					stripe_rect = odb.Rect(x0, w.yMin(), x1, w.yMax())
-					odb.createSBoxes(sw_new, self.layer, [stripe_rect], "STRIPE")
+					# Add Metal4 wire extending from PDN ring to filler cell.
+					# Use addWire (path-based) instead of createSBoxes (rect-based)
+					# to produce DEF that Magic can parse.
+					odb.dbSBox.create(sw_new, self.layer, x0, y - h // 2, x1, y + h // 2, "STRIPE")
 
 
 	def run(self):
