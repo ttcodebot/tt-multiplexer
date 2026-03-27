@@ -1,6 +1,6 @@
 pdk:
-  name: ihp-sg13g2
-  tech: ihp-sg13g2
+  name: ihp-sg13cmos5l
+  tech: ihp-sg13cmos5l
   die:
     width:  3600000
     height: 5000000
@@ -56,41 +56,23 @@ pdk:
         offset: 0
         pitch:  420
         width:  200
-    Metal5:
-      x:
-        offset: 0
-        pitch:  480
-        width:  200
-      y:
-        offset: 0
-        pitch:  420
-        width:  200
     TopMetal1:
       x:
-        offset: 1700
-        pitch:  3400
+        offset: 1640
+        pitch:  2280
         width:  1600
       y:
-        offset: 1700
-        pitch:  3400
-        width:  1600
-    TopMetal2:
-      x:
-        offset: 1700
-        pitch:  3400
-        width:  1600
-      y:
-        offset: 1700
-        pitch:  3400
+        offset: 1640
+        pitch:  2280
         width:  1600
 tt:
-  grid:     # In number of blocks
-    x: 12   # Must be divisible by 4
-    y: 20   # Must be EVEN
+  grid:
+    x: 12
+    y: 20
   block:
     w: -1
     h: -1
-  margin:   # In 'sites'
+  margin:
     x: 6
     y: 1
   uio:
@@ -101,7 +83,7 @@ tt:
     io:  8
   spine:
     vlayer: 'Metal4'
-    hlayer: 'Metal5'
+    hlayer: 'Metal3'
   analog: []
   huge_modules:
     mux_id: [ 6, 11, 12 ]
