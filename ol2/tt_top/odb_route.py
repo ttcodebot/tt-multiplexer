@@ -1825,22 +1825,26 @@ class PadRingPowerStrapper:
 			print(f"  WARNING: No Metal4 core ring found for net '{net.getName()}', skipping")
 			return
 
-		# Widen the ring segment to extend outward to the filler M4 pins.
-		# We modify the existing ring SBox coordinates directly.
+		# Add a new M4 stripe overlapping the ring and extending to the filler.
+		# We cannot modify existing SBox coords, so we add a new SBox that
+		# covers the gap between the ring and the filler M4 pin.
+		sw_new = odb.dbSWire.create(net, "ROUTED")
+
 		for ring, rail, side in [
 			(ring_left, rail_left, 'left'),
 			(ring_right, rail_right, 'right'),
 		]:
-			old_xmin = ring.xMin()
-			old_xmax = ring.xMax()
 			if side == 'left':
-				# Extend leftward: new xMin = filler M4 rail left edge
-				new_xmin = min(old_xmin, rail[0])
-				ring.setCoords(new_xmin, ring.yMin(), old_xmax, ring.yMax())
+				x0 = rail[0]
+				x1 = ring.xMax()  # overlap with ring
 			else:
-				# Extend rightward: new xMax = filler M4 rail right edge
-				new_xmax = max(old_xmax, rail[1])
-				ring.setCoords(old_xmin, ring.yMin(), new_xmax, ring.yMax())
+				x0 = ring.xMin()  # overlap with ring
+				x1 = rail[1]
+
+			if x0 < x1:
+				# Create extension as a RING-typed SBox (same as existing rings,
+				# which Magic can parse)
+				odb.dbSBox.create(sw_new, self.layer, x0, ring.yMin(), x1, ring.yMax(), "RING")
 
 
 	def run(self):
