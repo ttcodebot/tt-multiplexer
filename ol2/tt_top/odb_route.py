@@ -1706,13 +1706,20 @@ class PadRingPowerStrapper:
 
 	Solution: use Metal3 horizontal bridges that pass UNDER the M4
 	rings, with via3Array (Metal3 -> Metal4) vias placed at the
-	target ring to connect upward.  Multiple M3 bridge stripes are
-	created at the Y positions of the IO power pad cells for maximum
-	current capacity.
+	target ring to connect upward.
+
+	Bridges are created at:
+	  1. The Y positions of the IO power pad cells (IOPadVdd/IOPadVss)
+	  2. Additional distributed positions along the ring height for
+	     low-resistance parallel paths (every BRIDGE_PITCH nm)
 	"""
 
 	# Bridge stripe width in nm (25 um matches the ring width)
 	BRIDGE_WIDTH = 25000
+	# Pitch between distributed bridge stripes (200 um)
+	BRIDGE_PITCH = 200000
+	# Minimum gap between bridge stripes to avoid DRC violations (5 um)
+	BRIDGE_MIN_GAP = 5000
 
 	def __init__(self, reader):
 		self.reader = reader
@@ -1723,7 +1730,7 @@ class PadRingPowerStrapper:
 		# Metal4 for the ring (target layer)
 		self.m4_layer = tech.findLayer('Metal4')
 		# Via generator: Metal3 -> Metal4 through Via3
-		self.viagen = ViaGenerator(reader, 'via3Array')
+		self.viagen_34 = ViaGenerator(reader, 'via3Array')
 
 
 	def _find_io_power_pads(self):
@@ -1828,14 +1835,13 @@ class PadRingPowerStrapper:
 		return x_min, x_max
 
 
-	def _create_m3_bridge(self, sw, y_center, x_filler, x_ring, ring_xmin, ring_xmax, side):
+	def _create_m3_bridge(self, sw, y_center, x_filler, ring_xmin, ring_xmax, side):
 		"""Create a single M3 bridge stripe with Via3 at the ring end.
 
 		Args:
 			sw: dbSWire to add geometry to
 			y_center: Y center of the bridge stripe
 			x_filler: X extent (min or max) of the filler pin on M3/M4
-			x_ring: X center of the target M4 ring
 			ring_xmin: X min of the M4 ring segment
 			ring_xmax: X max of the M4 ring segment
 			side: 'left' or 'right'
@@ -1845,7 +1851,6 @@ class PadRingPowerStrapper:
 		y1 = y_center + w // 2
 
 		if side == 'left':
-			# M3 stripe from filler region to ring
 			m3_x0 = x_filler
 			m3_x1 = ring_xmax
 		else:
@@ -1853,21 +1858,52 @@ class PadRingPowerStrapper:
 			m3_x1 = x_filler
 
 		if m3_x0 >= m3_x1:
-			print(f"  WARNING: M3 bridge would have zero/negative width on {side} side, skipping")
-			return
+			return False
 
 		# Create the M3 horizontal stripe
 		odb.createSBoxes(sw, self.m3_layer,
 			[odb.Rect(m3_x0, y0, m3_x1, y1)], "STRIPE")
 
 		# Create Via3 (M3 -> M4) at the ring overlap region
-		via_w = ring_xmax - ring_xmin  # via width = ring width
-		via_h = w                       # via height = bridge width
-		via = self.viagen.get4sz_ext(via_w, via_h, bot_fit='xy', top_fit='xy')
+		via_w = ring_xmax - ring_xmin
+		via_h = w
+		via = self.viagen_34.get4sz_ext(via_w, via_h, bot_fit='xy', top_fit='xy')
 
 		via_x = (ring_xmin + ring_xmax) // 2
-		via_y = y_center
-		odb.createSBoxes(sw, via, [odb.Point(via_x, via_y)], "STRIPE")
+		odb.createSBoxes(sw, via, [odb.Point(via_x, y_center)], "STRIPE")
+		return True
+
+
+	def _generate_distributed_positions(self, ring_ymin, ring_ymax, pad_positions):
+		"""Generate Y positions for bridge stripes: pad positions + distributed fill.
+
+		Returns a sorted list of Y positions that includes both the IO pad
+		positions and additional evenly-spaced positions to fill the ring height.
+		"""
+		margin = self.BRIDGE_WIDTH + self.BRIDGE_MIN_GAP
+		y_min = ring_ymin + margin
+		y_max = ring_ymax - margin
+
+		# Start with IO pad positions (clamped to ring extent)
+		positions = set()
+		for y in pad_positions:
+			y_clamped = max(y_min, min(y, y_max))
+			positions.add(y_clamped)
+
+		# Add distributed positions along the ring
+		y = y_min + self.BRIDGE_PITCH // 2
+		while y < y_max:
+			# Check for conflicts with existing positions
+			conflict = False
+			for existing_y in list(positions):
+				if abs(y - existing_y) < (self.BRIDGE_WIDTH + self.BRIDGE_MIN_GAP):
+					conflict = True
+					break
+			if not conflict:
+				positions.add(y)
+			y += self.BRIDGE_PITCH
+
+		return sorted(positions)
 
 
 	def connect_net(self, net, pad_positions):
@@ -1877,51 +1913,60 @@ class PadRingPowerStrapper:
 			print(f"  WARNING: No Metal4 core ring found for net '{net.getName()}', skipping")
 			return
 
-		# Find the filler pin X extents on M4 (which is what we need to overlap with)
+		# Find the filler pin X extents on M4
 		filler_m4_left  = self._find_filler_pin_x(net, 'Metal4', 'left')
 		filler_m4_right = self._find_filler_pin_x(net, 'Metal4', 'right')
 
-		# Also find M3 filler pins (the bridge starts on M3)
+		# Also find M3 filler pins
 		filler_m3_left  = self._find_filler_pin_x(net, 'Metal3', 'left')
 		filler_m3_right = self._find_filler_pin_x(net, 'Metal3', 'right')
 
-		# Use the outermost filler pin extent that gives us the best reach
-		# M3 bridges can start from wherever the filler has M3 or M4 pins
-		left_start_x  = min(x for x in [filler_m3_left[0],  filler_m4_left[0]]  if x is not None) if any(x is not None for x in [filler_m3_left[0],  filler_m4_left[0]])  else None
-		right_end_x   = max(x for x in [filler_m3_right[1], filler_m4_right[1]] if x is not None) if any(x is not None for x in [filler_m3_right[1], filler_m4_right[1]]) else None
+		# Use the outermost filler pin extent for the bridge starting point
+		def safe_min(vals):
+			valid = [x for x in vals if x is not None]
+			return min(valid) if valid else None
+
+		def safe_max(vals):
+			valid = [x for x in vals if x is not None]
+			return max(valid) if valid else None
+
+		left_start_x  = safe_min([filler_m3_left[0],  filler_m4_left[0]])
+		right_end_x   = safe_max([filler_m3_right[1], filler_m4_right[1]])
 
 		sw = odb.dbSWire.create(net, "ROUTED")
-
 		net_name = net.getName()
-		print(f"  PadRingPowerStrapper: bridging '{net_name}' with M3 bridges + Via3")
+		print(f"  PadRingPowerStrapper: bridging '{net_name}' with distributed M3 bridges + Via3")
 
-		# Create bridges at each IO power pad Y position
-		for side_name, ring, pad_ys, filler_x in [
-			('left',  ring_left,  pad_positions.get('left', []),  left_start_x),
-			('right', ring_right, pad_positions.get('right', []), right_end_x),
+		# Create M3 bridges on both sides
+		for side_name, ring, filler_x in [
+			('left',  ring_left,  left_start_x),
+			('right', ring_right, right_end_x),
 		]:
 			if filler_x is None:
 				print(f"    WARNING: No filler pin geometry found on {side_name} side for '{net_name}'")
 				continue
 
-			if not pad_ys:
-				print(f"    WARNING: No IO power pads on {side_name} side for '{net_name}'")
-				continue
+			# Get pad Y positions for this side
+			pad_ys = pad_positions.get(side_name, [])
 
-			for y_pos in pad_ys:
-				# Clamp Y to within the ring's vertical extent
-				y_clamped = max(ring.yMin() + self.BRIDGE_WIDTH, min(y_pos, ring.yMax() - self.BRIDGE_WIDTH))
-				print(f"    {side_name} M3 bridge at Y={y_clamped/1000:.1f}um")
-				self._create_m3_bridge(
-					sw, y_clamped, filler_x,
-					(ring.xMin() + ring.xMax()) // 2,
+			# Generate distributed bridge positions
+			bridge_ys = self._generate_distributed_positions(
+				ring.yMin(), ring.yMax(), pad_ys
+			)
+
+			bridge_count = 0
+			for y_pos in bridge_ys:
+				if self._create_m3_bridge(
+					sw, y_pos, filler_x,
 					ring.xMin(), ring.xMax(),
 					side_name,
-				)
+				):
+					bridge_count += 1
 
-		# Also create an M4 extension from ring to filler M4 pin overlap
-		# This provides a direct M4 connection at the filler pins
-		# But ONLY within the net's own ring extent (no crossing other rings)
+			print(f"    {side_name}: {bridge_count} M3 bridges from x={filler_x/1000:.1f}um "
+				  f"to ring x={ring.xMin()/1000:.1f}..{ring.xMax()/1000:.1f}um")
+
+		# Also create an M4 extension if filler M4 pins overlap with the ring
 		for side_name, ring, filler_m4 in [
 			('left',  ring_left,  filler_m4_left),
 			('right', ring_right, filler_m4_right),
@@ -1929,10 +1974,8 @@ class PadRingPowerStrapper:
 			if filler_m4[0] is None or filler_m4[1] is None:
 				continue
 
-			# Check if the filler M4 pin actually overlaps/touches the ring
 			if side_name == 'left':
 				if filler_m4[1] >= ring.xMin():
-					# Filler M4 pin reaches the ring - add small overlap extension
 					x0 = filler_m4[0]
 					x1 = ring.xMax()
 					if x0 < x1:
@@ -1950,7 +1993,7 @@ class PadRingPowerStrapper:
 
 
 	def run(self):
-		# Find IO power pad positions (used to place bridges)
+		# Find IO power pad positions
 		pad_positions = self._find_io_power_pads()
 
 		# Process power nets
