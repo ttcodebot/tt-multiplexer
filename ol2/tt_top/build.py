@@ -238,12 +238,12 @@ class TopFlow(SequentialFlow):
 		Odb.ReportWireLength,
 		Checker.WireLength,
 		OpenROAD.RCX,
-		# OpenROAD.STAPostPNR,  # SPEF parsing error in sta tool
+		OpenROAD.STAPostPNR,
 		# CMOS5L: Skip IRDropReport (PDN connectivity incomplete without TopMetal2)
 		# OpenROAD.IRDropReport,
 		Magic.StreamOut,
 		KLayout.StreamOut,
-		KLayout.XOR,
+		# KLayout.XOR,  # XOR result not checked (Checker.XOR disabled); skip to save build time
 		# Checker.XOR,  # XOR differences between Magic/KLayout expected (tool differences)
 
 		IHPExtractSpice,
@@ -268,8 +268,10 @@ if __name__ == '__main__':
 	config = vars(args)
 
 	if config['skip_xor_checks']:
-		TopFlow.Steps.remove(KLayout.XOR)
-		TopFlow.Steps.remove(Checker.XOR)
+		if KLayout.XOR in TopFlow.Steps:
+			TopFlow.Steps.remove(KLayout.XOR)
+		if Checker.XOR in TopFlow.Steps:
+			TopFlow.Steps.remove(Checker.XOR)
 
 	# Get PDK root out of environment
 	PDK_ROOT = os.getenv('PDK_ROOT')
