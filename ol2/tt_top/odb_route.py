@@ -1891,9 +1891,12 @@ def route(
 	p = ModulePowerStrapper(reader, tti)
 	p.run()
 
-	# Create the padring power straps
-	p = PadRingPowerStrapper(reader)
-	p.run()
+	# CMOS5L: PadRingPowerStrapper disabled — the M4 concentric ring
+	# architecture prevents safe extension (would short vdpwr/vgnd/vapwr).
+	# Power connection from padring to core needs a redesigned approach
+	# using lower metals with proper isolation between domains.
+	# p = PadRingPowerStrapper(reader)
+	# p.run()
 
 	## Analog router
 	#a = AnalogRouter(reader, tti)
