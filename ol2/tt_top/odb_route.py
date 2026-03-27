@@ -1792,45 +1792,55 @@ class PadRingPowerStrapper:
 
 
 	def connect_net(self, net):
-		# Get the rails
+		# Get the rails (Metal4 positions on filler vdd/vss pins)
 		rail_left, rail_right = self.find_padring_rails(net)
 
-		# Create new SWire
-		sw_new = odb.dbSWire.create(net, "ROUTED")
+		# In cmos5l, the PDN has TopMetal1 horizontal stripes and Metal4 vertical
+		# core ring. We extend M4 core ring segments outward to overlap with the
+		# filler cell M4 vdd/vss pins, creating the power connection.
 
-		# Scan all existing stripes on the bridge layer (Metal4)
+		# Find the Metal4 core ring segments (RING-typed wires)
+		ring_left = None
+		ring_right = None
+		die_center = self.reader.block.getDieArea().xMax() // 2
+
 		for sw in net.getSWires():
 			for w in sw.getWires():
-				# Only stripes on our bridge layer
 				if w.isVia():
 					continue
-				if w.getWireShapeType() != 'STRIPE':
+				if w.getTechLayer().getName() != 'Metal4':
 					continue
-				if w.getTechLayer().getName() != self.layer.getName():
+				# Core ring vertical segments are tall
+				if w.getDY() < 1000000:
 					continue
+				x_center = (w.xMin() + w.xMax()) // 2
+				if x_center < die_center:
+					if ring_left is None or w.xMin() < ring_left.xMin():
+						ring_left = w  # outermost left ring
+				else:
+					if ring_right is None or w.xMax() > ring_right.xMax():
+						ring_right = w  # outermost right ring
 
-				# Process each side (left and right)
-				y = (w.yMin() + w.yMax()) // 2
-				h = w.getDY()
+		if not ring_left or not ring_right:
+			print(f"  WARNING: No Metal4 core ring found for net '{net.getName()}', skipping")
+			return
 
-				data = [
-					( rail_left[0], w.xMin(),  self.obs_left  ),
-					( w.xMax(), rail_right[1], self.obs_right ),
-				]
-
-				for x0, x1, obs in data:
-					# Check for obstructions
-					if any([ (obs_y1 >= w.yMin()) and (obs_y0 <= w.yMax()) for obs_y0, obs_y1 in obs]):
-						continue
-
-					# Skip if stripe would be zero or negative width
-					if x0 >= x1:
-						continue
-
-					# Add Metal4 wire extending from PDN ring to filler cell.
-					# Use addWire (path-based) instead of createSBoxes (rect-based)
-					# to produce DEF that Magic can parse.
-					odb.dbSBox.create(sw_new, self.layer, x0, y - h // 2, x1, y + h // 2, "STRIPE")
+		# Widen the ring segment to extend outward to the filler M4 pins.
+		# We modify the existing ring SBox coordinates directly.
+		for ring, rail, side in [
+			(ring_left, rail_left, 'left'),
+			(ring_right, rail_right, 'right'),
+		]:
+			old_xmin = ring.xMin()
+			old_xmax = ring.xMax()
+			if side == 'left':
+				# Extend leftward: new xMin = filler M4 rail left edge
+				new_xmin = min(old_xmin, rail[0])
+				ring.setCoords(new_xmin, ring.yMin(), old_xmax, ring.yMax())
+			else:
+				# Extend rightward: new xMax = filler M4 rail right edge
+				new_xmax = max(old_xmax, rail[1])
+				ring.setCoords(old_xmin, ring.yMin(), new_xmax, ring.yMax())
 
 
 	def run(self):
