@@ -155,8 +155,12 @@ class IHPExtractSpice(Step):
 			"../../py/ihp_extract_spice.py"
 		)
 
+		# Use system Python (has gdstk+numpy) instead of nix Python (doesn't)
+		system_python = os.environ.get('SYSTEM_PYTHON', 'python3')
+
 		self.run_subprocess(
 			[
+				system_python,
 				script,
 				abspath(input_gds),
 				abspath(output_spice),
