@@ -205,8 +205,8 @@ class TopFlow(SequentialFlow):
 		OpenROAD.IRDropReport,
 		Magic.StreamOut,
 		KLayout.StreamOut,
-		# KLayout.XOR,  # XOR result not checked (Checker.XOR disabled); skip to save build time
-		# Checker.XOR,  # XOR differences between Magic/KLayout expected (tool differences)
+		KLayout.XOR,
+		Checker.XOR,
 
 		IHPExtractSpice,
 		Netgen.LVS,
