@@ -70,9 +70,21 @@ class MuxFlow(SequentialFlow):
 		OpenROAD.IRDropReport,
 		OpenROAD.WriteViews,
 		OpenROAD.WriteCDL,
+		Magic.StreamOut,
+		Magic.WriteLEF,
 		KLayout.StreamOut,
+		KLayout.XOR,
+		Checker.XOR,
+		Magic.DRC,
+		Checker.MagicDRC,
 		KLayout.DRC,
 		Checker.KLayoutDRC,
+		Magic.SpiceExtraction,
+		Checker.IllegalOverlap,
+		Netgen.LVS,
+		Checker.LVS,
+		KLayout.LVS,
+		Checker.LVS,
 	]
 
 
@@ -124,6 +136,9 @@ if __name__ == '__main__':
 		"GRT_ALLOW_CONGESTION" : True,
 		"RT_MAX_LAYER"         : "Metal4",
 
+		# LEF generation option
+		"MAGIC_LEF_WRITE_USE_GDS" : False,	# Workaround LEF/GDS pin naming issue
+		"MAGIC_WRITE_LEF_PINONLY" : True,
 
 		# LVS
 		"MAGIC_DEF_LABELS": False,			# Avoid exporting useless internal labels
@@ -137,18 +152,3 @@ if __name__ == '__main__':
 	)
 
 	flow.start()
-
-	# Symlink openroad.lef -> .lef for backward compatibility with copy_macros
-	import shutil
-	runs_dir = os.path.join(".", "runs")
-	if os.path.isdir(runs_dir):
-		last_run = sorted(os.listdir(runs_dir))[-1]
-		lef_dir = os.path.join(runs_dir, last_run, "final", "lef")
-		if os.path.isdir(lef_dir):
-			for f in os.listdir(lef_dir):
-				if f.endswith(".openroad.lef"):
-					src = os.path.join(lef_dir, f)
-					dst = os.path.join(lef_dir, f.replace(".openroad.lef", ".lef"))
-					if not os.path.exists(dst):
-						shutil.copy2(src, dst)
-						print(f"Copied {src} -> {dst}")
