@@ -213,6 +213,8 @@ class TopFlow(SequentialFlow):
 		# Checker.LVS deferred: pad_raw[50:63] pin mismatch (64 in Verilog, 50 in layout)
 		# Circuits are equivalent; only top-level pin matching fails.
 
+		Magic.DRC,
+		Checker.MagicDRC,
 		KLayout.DRC,
 		Checker.KLayoutDRC,
 
