@@ -55,20 +55,6 @@ class CustomPower(OdbpyStep):
 
 
 @Step.factory.register()
-class UnplaceShapelessBTerms(OdbpyStep):
-
-	id = "TT.Top.UnplaceShapelessBTerms"
-	name = "Unplace BTerms without physical shapes (DPL-0386 fix)"
-
-	def get_script_path(self):
-		return os.path.join(
-			os.path.dirname(__file__),
-			"odb_unplace_shapeless_bterms.py"
-		)
-
-
-
-@Step.factory.register()
 class CustomRoute(OdbpyStep):
 
 	id = "TT.Top.CustomRoute"
@@ -190,7 +176,6 @@ class TopFlow(SequentialFlow):
 		Odb.ManualMacroPlacement,
 		OpenROAD.GeneratePDN,
 		OpenROAD.GlobalPlacement,
-		UnplaceShapelessBTerms,
 		OpenROAD.DetailedPlacement,
 		CustomRoute,
 		OpenROAD.GlobalRouting,
@@ -210,8 +195,7 @@ class TopFlow(SequentialFlow):
 
 		IHPExtractSpice,
 		Netgen.LVS,
-		# Checker.LVS deferred: pad_raw[50:63] pin mismatch (64 in Verilog, 50 in layout)
-		# Circuits are equivalent; only top-level pin matching fails.
+		Checker.LVS,
 
 #		Magic.SpiceExtraction,
 #		Checker.IllegalOverlap,

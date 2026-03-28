@@ -9,30 +9,29 @@
 # Port: Control inputs
 set all_ctl [list]
 for {set i 0} {$i < 6} {incr i} {
-	set j [expr $i+0]
-	lappend all_ctl [ get_ports "pad_raw[$j]" ]
+	lappend all_ctl [ get_ports "pad_raw[$i]" ]
 }
 
 # Port: User IO
 set all_pads_in  [list]
 set all_pads_out [list]
 
-	# UIO
+	# UIO (pad_raw[14..21])
 for {set i 0} {$i < 8} {incr i} {
-	set j [expr $i+32]
+	set j [expr $i+14]
 	lappend all_pads_in  [ get_ports "pad_raw[$j]" ]
 	lappend all_pads_out [ get_ports "pad_raw[$j]" ]
 }
 
-	# UO
+	# UO (pad_raw[6..13])
 for {set i 0} {$i < 8} {incr i} {
-	set j [expr $i+8]
+	set j [expr $i+6]
 	lappend all_pads_out [ get_ports "pad_raw[$j]" ]
 }
 
-	# UI
+	# UI (pad_raw[22..31])
 for {set i 0} {$i < 10} {incr i} {
-	set j [expr $i+40]
+	set j [expr $i+22]
 	lappend all_pads_in  [ get_ports "pad_raw[$j]" ]
 }
 

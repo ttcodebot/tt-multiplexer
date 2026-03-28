@@ -10,7 +10,7 @@
 `default_nettype none
 
 module tt_ihp_wrapper (
-	inout wire [63:0] pad_raw
+	inout wire [31:0] pad_raw
 );
 
 	// Signals
@@ -57,87 +57,109 @@ module tt_ihp_wrapper (
 	localparam [15:0] TT_PAD_PWR_ANALOG = TT_PAD_PWR_IO; // FIXME
 	localparam [15:0] TT_PAD_GND_ANALOG = TT_PAD_GND_IO; // FIXME
 
-	localparam [64*24-1:0] CONFIG = {
-		 8'd0, TT_PAD_PWR_CORE,		// 64 - VDD Core
-		 8'd0, TT_PAD_GND_CORE,		// 63 - GND Core
-		8'd47, TT_PAD_ANALOG,		// 62 - ana[15]
-		8'd46, TT_PAD_ANALOG,		// 61 - ana[14]
-		8'd45, TT_PAD_ANALOG,		// 60 - ana[13]
-		8'd44, TT_PAD_ANALOG,		// 59 - ana[12]
-		 8'd0, TT_PAD_PWR_ANALOG,	// 58 - VDD Analog
-		 8'd0, TT_PAD_GND_ANALOG,	// 57 - GND Analog
-		8'd43, TT_PAD_ANALOG,		// 56 - ana[11]
-		8'd42, TT_PAD_ANALOG,		// 55 - ana[10]
-		8'd41, TT_PAD_ANALOG,		// 54 - ana[9]
-		8'd40, TT_PAD_ANALOG,		// 53 - ana[8]
-		 8'd0, TT_PAD_PWR_IO,		// 52 - VDD IO
-		 8'd0, TT_PAD_GND_IO,		// 51 - GND IO
-		 8'd6, TT_PAD_IN,			// 50 - u_clk
-		 8'd7, TT_PAD_IN,			// 49 - u_rst_n
-		8'd15, TT_PAD_IN,			// 48 - ui[7]
-		8'd14, TT_PAD_IN,			// 47 - ui[6]
-		8'd13, TT_PAD_IN,			// 46 - ui[5]
-		8'd12, TT_PAD_IN,			// 45 - ui[4]
-		8'd11, TT_PAD_IN,			// 44 - ui[3]
-		8'd10, TT_PAD_IN,			// 43 - ui[2]
-		 8'd9, TT_PAD_IN,			// 42 - ui[1]
-		 8'd8, TT_PAD_IN,			// 41 - ui[0]
-		8'd23, TT_PAD_INOUT,		// 40 - uio[7]
-		8'd22, TT_PAD_INOUT,		// 39 - uio[6]
-		8'd21, TT_PAD_INOUT,		// 38 - uio[5]
-		8'd20, TT_PAD_INOUT,		// 37 - uio[4]
-		8'd19, TT_PAD_INOUT,		// 36 - uio[3]
-		8'd18, TT_PAD_INOUT,		// 35 - uio[2]
-		8'd17, TT_PAD_INOUT,		// 34 - uio[1]
-		8'd16, TT_PAD_INOUT,		// 33 - uio[0]
-		 8'd0, TT_PAD_PWR_IO,		// 32 - VDD IO
-		 8'd0, TT_PAD_GND_IO,		// 31 - GND IO
-		 8'd0, TT_PAD_PWR_CORE,		// 30 - VDD Core
-		 8'd0, TT_PAD_GND_CORE,		// 29 - GND Core
-		8'd39, TT_PAD_ANALOG,		// 28 - ana[7]
-		8'd38, TT_PAD_ANALOG,		// 27 - ana[6]
-		8'd37, TT_PAD_ANALOG,		// 26 - ana[5]
-		8'd36, TT_PAD_ANALOG,		// 25 - ana[4]
-		 8'd0, TT_PAD_GND_ANALOG,	// 24 - GND Analog
-		 8'd0, TT_PAD_PWR_ANALOG,	// 23 - VAA Analog
-		8'd35, TT_PAD_ANALOG,		// 22 - ana[3]
-		8'd34, TT_PAD_ANALOG,		// 21 - ana[2]
-		8'd33, TT_PAD_ANALOG,		// 20 - ana[1]
-		8'd32, TT_PAD_ANALOG,		// 19 - ana[0]
-		 8'd0, TT_PAD_GND_IO,		// 18 - GND IO
-		 8'd0, TT_PAD_PWR_IO,		// 17 - VDD IO
-		8'd31, TT_PAD_OUT,			// 16 - uo[7]
-		8'd30, TT_PAD_OUT,			// 15 - uo[6]
-		8'd29, TT_PAD_OUT,			// 14 - uo[5]
-		8'd28, TT_PAD_OUT,			// 13 - uo[4]
-		8'd27, TT_PAD_OUT,			// 12 - uo[3]
-		8'd26, TT_PAD_OUT,			// 11 - uo[2]
-		8'd25, TT_PAD_OUT,			// 10 - uo[1]
-		8'd24, TT_PAD_OUT,			// 9  - uo[0]
-		 8'd0, TT_PAD_NC,			// 8  - nc
-		 8'd0, TT_PAD_NC,			// 7  - nc
-		 8'd5, TT_PAD_IN,			// 6  - ctl[5]
-		 8'd4, TT_PAD_IN,			// 5  - ctl[4]
-		 8'd3, TT_PAD_IN,			// 4  - ctl[3]
-		 8'd2, TT_PAD_IN,			// 3  - ctl[2]
-		 8'd1, TT_PAD_IN,			// 2  - ctl[1]
-		 8'd0, TT_PAD_IN			// 1  - ctl[0]
+	// CONFIG: Each entry is 32 bits: {8'pad_raw_idx, 8'pad_io_idx, 16'config}
+	//   pad_raw_idx = index into pad_raw[31:0] for signal pads, 8'hFF for non-signal
+	//   pad_io_idx  = index into pad_in/pad_out/pad_oex/pad_ana
+	localparam [64*32-1:0] CONFIG = {
+		 8'hFF,  8'd0, TT_PAD_PWR_CORE,	// 64 - VDD Core
+		 8'hFF,  8'd0, TT_PAD_GND_CORE,	// 63 - GND Core
+		 8'hFF, 8'd47, TT_PAD_ANALOG,		// 62 - ana[15]
+		 8'hFF, 8'd46, TT_PAD_ANALOG,		// 61 - ana[14]
+		 8'hFF, 8'd45, TT_PAD_ANALOG,		// 60 - ana[13]
+		 8'hFF, 8'd44, TT_PAD_ANALOG,		// 59 - ana[12]
+		 8'hFF,  8'd0, TT_PAD_PWR_ANALOG,	// 58 - VDD Analog
+		 8'hFF,  8'd0, TT_PAD_GND_ANALOG,	// 57 - GND Analog
+		 8'hFF, 8'd43, TT_PAD_ANALOG,		// 56 - ana[11]
+		 8'hFF, 8'd42, TT_PAD_ANALOG,		// 55 - ana[10]
+		 8'hFF, 8'd41, TT_PAD_ANALOG,		// 54 - ana[9]
+		 8'hFF, 8'd40, TT_PAD_ANALOG,		// 53 - ana[8]
+		 8'hFF,  8'd0, TT_PAD_PWR_IO,		// 52 - VDD IO
+		 8'hFF,  8'd0, TT_PAD_GND_IO,		// 51 - GND IO
+		8'd31,   8'd6, TT_PAD_IN,			// 50 - u_clk
+		8'd30,   8'd7, TT_PAD_IN,			// 49 - u_rst_n
+		8'd29,  8'd15, TT_PAD_IN,			// 48 - ui[7]
+		8'd28,  8'd14, TT_PAD_IN,			// 47 - ui[6]
+		8'd27,  8'd13, TT_PAD_IN,			// 46 - ui[5]
+		8'd26,  8'd12, TT_PAD_IN,			// 45 - ui[4]
+		8'd25,  8'd11, TT_PAD_IN,			// 44 - ui[3]
+		8'd24,  8'd10, TT_PAD_IN,			// 43 - ui[2]
+		8'd23,   8'd9, TT_PAD_IN,			// 42 - ui[1]
+		8'd22,   8'd8, TT_PAD_IN,			// 41 - ui[0]
+		8'd21,  8'd23, TT_PAD_INOUT,		// 40 - uio[7]
+		8'd20,  8'd22, TT_PAD_INOUT,		// 39 - uio[6]
+		8'd19,  8'd21, TT_PAD_INOUT,		// 38 - uio[5]
+		8'd18,  8'd20, TT_PAD_INOUT,		// 37 - uio[4]
+		8'd17,  8'd19, TT_PAD_INOUT,		// 36 - uio[3]
+		8'd16,  8'd18, TT_PAD_INOUT,		// 35 - uio[2]
+		8'd15,  8'd17, TT_PAD_INOUT,		// 34 - uio[1]
+		8'd14,  8'd16, TT_PAD_INOUT,		// 33 - uio[0]
+		 8'hFF,  8'd0, TT_PAD_PWR_IO,		// 32 - VDD IO
+		 8'hFF,  8'd0, TT_PAD_GND_IO,		// 31 - GND IO
+		 8'hFF,  8'd0, TT_PAD_PWR_CORE,	// 30 - VDD Core
+		 8'hFF,  8'd0, TT_PAD_GND_CORE,	// 29 - GND Core
+		 8'hFF, 8'd39, TT_PAD_ANALOG,		// 28 - ana[7]
+		 8'hFF, 8'd38, TT_PAD_ANALOG,		// 27 - ana[6]
+		 8'hFF, 8'd37, TT_PAD_ANALOG,		// 26 - ana[5]
+		 8'hFF, 8'd36, TT_PAD_ANALOG,		// 25 - ana[4]
+		 8'hFF,  8'd0, TT_PAD_GND_ANALOG,	// 24 - GND Analog
+		 8'hFF,  8'd0, TT_PAD_PWR_ANALOG,	// 23 - VAA Analog
+		 8'hFF, 8'd35, TT_PAD_ANALOG,		// 22 - ana[3]
+		 8'hFF, 8'd34, TT_PAD_ANALOG,		// 21 - ana[2]
+		 8'hFF, 8'd33, TT_PAD_ANALOG,		// 20 - ana[1]
+		 8'hFF, 8'd32, TT_PAD_ANALOG,		// 19 - ana[0]
+		 8'hFF,  8'd0, TT_PAD_GND_IO,		// 18 - GND IO
+		 8'hFF,  8'd0, TT_PAD_PWR_IO,		// 17 - VDD IO
+		8'd13,  8'd31, TT_PAD_OUT,			// 16 - uo[7]
+		8'd12,  8'd30, TT_PAD_OUT,			// 15 - uo[6]
+		8'd11,  8'd29, TT_PAD_OUT,			// 14 - uo[5]
+		8'd10,  8'd28, TT_PAD_OUT,			// 13 - uo[4]
+		 8'd9,  8'd27, TT_PAD_OUT,			// 12 - uo[3]
+		 8'd8,  8'd26, TT_PAD_OUT,			// 11 - uo[2]
+		 8'd7,  8'd25, TT_PAD_OUT,			// 10 - uo[1]
+		 8'd6,  8'd24, TT_PAD_OUT,			// 9  - uo[0]
+		 8'hFF,  8'd0, TT_PAD_NC,			// 8  - nc
+		 8'hFF,  8'd0, TT_PAD_NC,			// 7  - nc
+		 8'd5,   8'd5, TT_PAD_IN,			// 6  - ctl[5]
+		 8'd4,   8'd4, TT_PAD_IN,			// 5  - ctl[4]
+		 8'd3,   8'd3, TT_PAD_IN,			// 4  - ctl[3]
+		 8'd2,   8'd2, TT_PAD_IN,			// 3  - ctl[2]
+		 8'd1,   8'd1, TT_PAD_IN,			// 2  - ctl[1]
+		 8'd0,   8'd0, TT_PAD_IN			// 1  - ctl[0]
 	};
+
+	localparam integer N_PAD_RAW = 32;
 
 	genvar i;
 	for (i=0; i<64; i=i+1)
 	begin : gpio
-		localparam [23:0] PAD_CFG = CONFIG[24*i+:24];
+		localparam [31:0] PAD_CFG = CONFIG[32*i+:32];
+		localparam [ 7:0] PAD_IO_IDX  = PAD_CFG[23:16];
+		localparam [ 7:0] PAD_RAW_IDX = PAD_CFG[31:24];
 
-		tt_ihp_gpio #(
-			.CONFIG(PAD_CFG[15:0])
-		) gpio_I (
-			.pad_ana (pad_ana[PAD_CFG[23:16]]),
-			.pad_in  (pad_in[PAD_CFG[23:16]]),
-			.pad_out (pad_out[PAD_CFG[23:16]]),
-			.pad_oe  (pad_oex[PAD_CFG[23:16]]),
-			.pad_raw (pad_raw[i])
-		);
+		if (PAD_RAW_IDX != 8'hFF)
+		begin : sig
+			tt_ihp_gpio #(
+				.CONFIG(PAD_CFG[15:0])
+			) gpio_I (
+				.pad_ana (pad_ana[PAD_IO_IDX]),
+				.pad_in  (pad_in[PAD_IO_IDX]),
+				.pad_out (pad_out[PAD_IO_IDX]),
+				.pad_oe  (pad_oex[PAD_IO_IDX]),
+				.pad_raw (pad_raw[PAD_RAW_IDX])
+			);
+		end
+		else
+		begin : pwr
+			tt_ihp_gpio #(
+				.CONFIG(PAD_CFG[15:0])
+			) gpio_I (
+				.pad_ana (pad_ana[PAD_IO_IDX]),
+				.pad_in  (pad_in[PAD_IO_IDX]),
+				.pad_out (pad_out[PAD_IO_IDX]),
+				.pad_oe  (pad_oex[PAD_IO_IDX]),
+				.pad_raw ()
+			);
+		end
 	end
 
 endmodule	// tt_ihp_wrapper

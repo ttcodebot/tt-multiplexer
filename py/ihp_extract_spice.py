@@ -651,7 +651,7 @@ def main(argv0, gds_filename, spice_filename, dbg_gds_filename=None):
 		return -1
 
 	# Complete the 'pad_raw' top list
-	for i in range(64):
+	for i in range(32):
 		n = f'pad_raw[{i}]'
 		if (None, n) not in ex.pads:
 			ex.pads[(None,n)] = []
