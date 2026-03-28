@@ -11,7 +11,26 @@ import sys
 
 import click
 
-import pya
+# Support running both inside KLayout (pya) and standalone (klayout.db)
+try:
+	import pya
+except ImportError:
+	import klayout.db as pya
+	sys.modules['pya'] = pya
+
+# Add a Logger stub when running standalone (klayout.db lacks pya.Logger)
+if not hasattr(pya, 'Logger'):
+	class _Logger:
+		@staticmethod
+		def warn(msg):
+			print(f'WARNING: {msg}', file=sys.stderr)
+		@staticmethod
+		def info(msg):
+			print(f'INFO: {msg}', file=sys.stderr)
+		@staticmethod
+		def error(msg):
+			print(f'ERROR: {msg}', file=sys.stderr)
+	pya.Logger = _Logger
 
 # Add KLayout tech in path
 TECH_DIR = os.path.join( os.getenv('PDK_ROOT'), os.getenv('PDK'), 'libs.tech/klayout' )
@@ -19,7 +38,7 @@ sys.path.append(f'{TECH_DIR}/python')
 sys.path.append(f'{TECH_DIR}/python/pycell4klayout-api/source/python')
 
 # Import PCell stuff
-import sg13g2_pycell_lib
+import sg13cmos5l_pycell_lib
 assert 'SG13_dev' in pya.Library.library_names()
 
 
@@ -51,10 +70,9 @@ def cli(input_gds, output_gds, die_width, die_height):
 	# Insert seal ring cell
 	top.insert(pya.CellInstArray(sealring_static, pya.Trans(0, 0)))
 
-	# Save output layout	
+	# Save output layout
 	layout.write(output_gds)
 
 
 if __name__ == "__main__":
 	cli()
-

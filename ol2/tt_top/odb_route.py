@@ -34,9 +34,9 @@ class Router:
 		# Find useful data
 		tech = reader.db.getTech()
 
-		self.layer_h = tech.findLayer('Metal5')
+		self.layer_h = tech.findLayer('Metal3')
 		self.layer_v = tech.findLayer('Metal4')
-		self.via     = tech.findVia('Via4_YX')
+		self.via     = tech.findVia('Via3_XY')
 
 		self.x_spine = []
 		self.y_muxes = {}
@@ -314,7 +314,7 @@ class Router:
 	def route_um_signals(self):
 		# Get via
 		tech = self.reader.db.getTech()
-		via = tech.findVia('Via4_YY')
+		via = tech.findVia('Via3_YY')
 
 		# Scan all the user modules
 		for um_inst in self.reader.instances:
@@ -337,11 +337,11 @@ class Router:
 			um_bbox  = um_inst.getBBox()
 
 			if mux_bbox.yMin() > um_bbox.yMax():
-				y_um  = um_bbox.yMax()
-				y_mux = mux_bbox.yMin()
+				y_um  = um_bbox.yMax() - 500   # extend into tile to overlap pin
+				y_mux = mux_bbox.yMin() + 500   # extend into mux to overlap pin
 			else:
-				y_um  = um_bbox.yMin()
-				y_mux = mux_bbox.yMax()
+				y_um  = um_bbox.yMin() + 500
+				y_mux = mux_bbox.yMax() - 500
 
 			# Scan every connection
 			for um_it in um_inst.getITerms():
@@ -828,20 +828,20 @@ class ModulePowerStrapper:
 		# Find useful data
 		tech = reader.db.getTech()
 
-		self.vg = ViaGenerator(self.reader, 'viagen67')
-		self.layer = tech.findLayer('TopMetal2')
+		self.vg = ViaGenerator(self.reader, 'viaTop1Array')
+		self.layer = tech.findLayer('TopMetal1')
 
 		self.stripe_space, self.stripe_width = self._find_stripe_space_width()
 		self.space = 5000
 
 	def _find_stripe_space_width(self):
-		# Get all `met5` stripes for VGND
+		# Get all `TopMetal1` stripes for VGND
 		net = self.reader.block.findNet('vgnd')
 		sw = net.getSWires()[0]
 		stripes = [
 			w for w in sw.getWires() if (
 				not w.isVia() and
-				w.getTechLayer().getName() == 'TopMetal2' and
+				w.getTechLayer().getName() == 'TopMetal1' and
 				w.getWireShapeType() == 'STRIPE'
 			)
 		]
@@ -849,7 +849,7 @@ class ModulePowerStrapper:
 		# Get spacing and width
 		yl = sorted([x.yMin() for x in stripes])
 
-		return (yl[1] - yl[0]), stripes[0].getWidth()
+		return (yl[1] - yl[0]), stripes[0].getDY()
 
 	def _get_y_pos_width(self, pg_inst, pg_idx, pg_cnt):
 		# Is it single or double height ?
@@ -1177,11 +1177,11 @@ class AnalogRouter:
 		self.via = viagen.create(3, 3, 'analog_via')
 
 		# Create via generator for power
-		self.pwr_vg = ViaGenerator(self.reader, 'M4M5_PR')
+		self.pwr_vg = ViaGenerator(self.reader, 'viaTop1Array')
 
 		# Create non-default rule
 		self.ndr = ndr = odb.dbTechNonDefaultRule_create(self.reader.block, 'analog_track')
-		for ln in [ 'li1', 'met1', 'met2', 'met3', 'met4', 'met5' ]:
+		for ln in [ 'li1', 'met1', 'met2', 'met3', 'met4' ]:
 			ly = tech.findLayer(ln)
 			lr = odb.dbTechLayerRule_create(ndr, ly)
 			lr.setWidth(900)
@@ -1211,7 +1211,7 @@ class AnalogRouter:
 		# Return result
 		center = (best_sb.yMin() + best_sb.yMax()) // 2
 		farend = best_sb.yMax() if above else best_sb.yMin()
-		width  = best_sb.getWidth()
+		width  = best_sb.getDY()
 
 		return center, farend, width
 
@@ -1695,140 +1695,276 @@ class AnalogRouter:
 
 
 class PadRingPowerStrapper:
+	"""Bridge core PDN rings to IO padring power cells.
+
+	The cmos5l PDN has three concentric M4 vertical core rings
+	(vapwr outer, vgnd middle, vdpwr inner) and TopMetal1 horizontal
+	stripes.  The IO padring filler cells have M4/M3 pins for vdd/vss
+	at x ~ 140-180 um, but the innermost core ring (vdpwr) starts at
+	x ~ 400 um.  A direct M4 extension would cross the other two
+	rings (vapwr, vgnd) and short them.
+
+	Solution: use Metal3 horizontal bridges that pass UNDER the M4
+	rings, with via3Array (Metal3 -> Metal4) vias placed at the
+	target ring to connect upward.  Multiple M3 bridge stripes are
+	created at the Y positions of the IO power pad cells for maximum
+	current capacity.
+	"""
+
+	# Bridge stripe width in nm (25 um matches the ring width)
+	BRIDGE_WIDTH = 25000
 
 	def __init__(self, reader):
-		# Save vars
 		self.reader = reader
-
-		# Find useful data
 		self.tech = tech = reader.db.getTech()
 
-		self.layer = tech.findLayer('TopMetal2')
-		self.viagen = ViaGenerator(reader, 'viagen67')
+		# Metal3 for the horizontal bridge (passes under M4 rings)
+		self.m3_layer = tech.findLayer('Metal3')
+		# Metal4 for the ring (target layer)
+		self.m4_layer = tech.findLayer('Metal4')
+		# Via generator: Metal3 -> Metal4 through Via3
+		self.viagen = ViaGenerator(reader, 'via3Array')
 
 
-	def find_padring_obstruction(self):
-		# sg13g2_IOPadVdd instances have TopMetal2 in the way, don't create
-		# straps if there is an instance there
-		blacklist = { 'sg13g2_IOPadVdd' }
-
-		bad_insts = [
-			inst for inst in self.reader.block.getInsts()
-				if (inst.getMaster().getName() in blacklist) and
-					(inst.getOrient() in {'R90', 'MXR90'})
-		]
-
-		self.obs_left  = []
-		self.obs_right = []
-
-		for inst in bad_insts:
-			bbox = inst.getBBox()
-			if inst.getOrient() == "R90":
-				self.obs_right.append( (bbox.yMin(), bbox.yMax()) )
-			else:
-				self.obs_left.append( (bbox.yMin(), bbox.yMax()) )
-
-
-	def find_padring_fill(self):
-		# Find a filler instance on right side and left side
-		self.fill_left  = None
-		self.fill_right = None
+	def _find_io_power_pads(self):
+		"""Find IOPadVdd and IOPadVss instances and their Y positions."""
+		pads = {
+			'vdpwr': {'left': [], 'right': []},
+			'vgnd':  {'left': [], 'right': []},
+		}
+		die_center = self.reader.block.getDieArea().xMax() // 2
 
 		for inst in self.reader.block.getInsts():
-			if not inst.getMaster().getName().startswith('sg13g2_Filler'):
+			master = inst.getMaster().getName()
+			if master == 'sg13cmos5l_IOPadVdd':
+				net_name = 'vdpwr'
+			elif master == 'sg13cmos5l_IOPadVss':
+				net_name = 'vgnd'
+			else:
 				continue
 
-			if inst.getOrient() == "R90":
-				self.fill_right = inst
-			elif inst.getOrient() == "MXR90":
-				self.fill_left = inst
+			bbox = inst.getBBox()
+			x_center = (bbox.xMin() + bbox.xMax()) // 2
+			y_center = (bbox.yMin() + bbox.yMax()) // 2
 
-			if (self.fill_right is not None) and (self.fill_left is not None):
-				break
-
-		else:
-			raise RuntimeError("Unable to find fillers on both sides of the padring")
-
-
-	def find_padring_rails(self, net):
-		# For each find the limits
-		rails = []
-
-		for inst in [self.fill_left, self.fill_right]:
-			# Find the matching ITerm on the net
-			for it in net.getITerms():
-				if it.getInst().this == inst.this:
-					break
+			if x_center < die_center:
+				pads[net_name]['left'].append(y_center)
 			else:
-				raise RuntimeError("Trying to connect net that's not on the pad ring")
+				pads[net_name]['right'].append(y_center)
 
-			# Find
-			rects = [ r for (l,r) in it.getGeometries() if l.getName() == "TopMetal1" ]
-			if len(rects) != 1:
-				raise RuntimeError("More than one rectangle found")
-
-			rails.append( ( rects[0].xMin(), rects[0].xMax() ) )
-
-		return rails
+		return pads
 
 
-	def connect_net(self, net):
-		# Get the rails
-		rail_left, rail_right = self.find_padring_rails(net)
+	def _find_m4_ring(self, net):
+		"""Find the Metal4 vertical core ring segments for a net."""
+		ring_left = None
+		ring_right = None
+		die_center = self.reader.block.getDieArea().xMax() // 2
 
-		# Create new SWire
-		sw_new = odb.dbSWire.create(net, "ROUTED")
-
-		# Scan all stripes
 		for sw in net.getSWires():
 			for w in sw.getWires():
-				# Only stripes
 				if w.isVia():
 					continue
+				if w.getTechLayer().getName() != 'Metal4':
+					continue
+				# Core ring vertical segments span most of the die height
+				if w.getDY() < 1000000:
+					continue
+				x_center = (w.xMin() + w.xMax()) // 2
+				if x_center < die_center:
+					if ring_left is None or x_center < (ring_left.xMin() + ring_left.xMax()) // 2:
+						ring_left = w
+				else:
+					if ring_right is None or x_center > (ring_right.xMin() + ring_right.xMax()) // 2:
+						ring_right = w
 
-				if w.getWireShapeType() != 'STRIPE':
+		return ring_left, ring_right
+
+
+	def _find_filler_pin_x(self, net, layer_name, side):
+		"""Find the X extent of filler cell pins for a given net and layer.
+
+		Scans ALL filler instances on the specified side to find the
+		pin geometry extent on the given layer.
+		"""
+		x_min = None
+		x_max = None
+
+		for inst in self.reader.block.getInsts():
+			if not inst.getMaster().getName().startswith('sg13cmos5l_Filler'):
+				continue
+
+			orient = inst.getOrient()
+			# DEF "FW" = ODB "MXR90" (west/left), DEF "W" = ODB "R90" (east/right)
+			if side == 'left' and orient != 'MXR90':
+				continue
+			if side == 'right' and orient != 'R90':
+				continue
+
+			# Search the filler instance's ITerms (few) rather than the
+			# net's ITerms (thousands for power nets)
+			net_name = net.getName()
+			for it in inst.getITerms():
+				it_net = it.getNet()
+				if it_net is None or it_net.getName() != net_name:
 					continue
 
-				# Process each rails
-				y = (w.yMin() + w.yMax()) // 2
-				h = w.getDY()
+				# Try instance-level geometry first
+				rects = [r for (l, r) in it.getGeometries() if l.getName() == layer_name]
+				if not rects:
+					# Fall back to master cell pin geometry
+					transform = inst.getTransform()
+					for mpin in it.getMTerm().getMPins():
+						for geom in mpin.getGeometry():
+							if geom.getTechLayer().getName() == layer_name:
+								r = geom.getBox()
+								r = transform.apply(r)
+								rects.append(r)
 
-				data = [
-					( rail_left[0], w.xMin(),  rail_left[0],  rail_left[1],  self.obs_left  ),
-					( w.xMax(), rail_right[1], rail_right[0], rail_right[1], self.obs_right ),
-				]
+				for r in rects:
+					if x_min is None or r.xMin() < x_min:
+						x_min = r.xMin()
+					if x_max is None or r.xMax() > x_max:
+						x_max = r.xMax()
 
-				for x0, x1, xv0, xv1, obs in data:
-					# Check for obstructions
-					if any([ (obs_y1 >= w.yMin()) and (obs_y0 <= w.yMax()) for obs_y0, obs_y1 in obs]):
-						continue
+				break  # found the matching ITerm
 
-					# Add via
-					via = self.viagen.get4sz_ext(xv1 - xv0, h, bot_fit='xy', top_fit='y')
-					odb.createSBoxes(sw_new, via, [odb.Point((xv0 + xv1) // 2, y)], "STRIPE")
+		return x_min, x_max
 
-					# Add stripe
-					stripe_rect = odb.Rect(x0, w.yMin(), x1, w.yMax())
-					odb.createSBoxes(sw_new, self.layer, [stripe_rect], "STRIPE")
+
+	def _create_m3_bridge(self, sw, y_center, x_filler, x_ring, ring_xmin, ring_xmax, side):
+		"""Create a single M3 bridge stripe with Via3 at the ring end.
+
+		Args:
+			sw: dbSWire to add geometry to
+			y_center: Y center of the bridge stripe
+			x_filler: X extent (min or max) of the filler pin on M3/M4
+			x_ring: X center of the target M4 ring
+			ring_xmin: X min of the M4 ring segment
+			ring_xmax: X max of the M4 ring segment
+			side: 'left' or 'right'
+		"""
+		w = self.BRIDGE_WIDTH
+		y0 = y_center - w // 2
+		y1 = y_center + w // 2
+
+		if side == 'left':
+			# M3 stripe from filler region to ring
+			m3_x0 = x_filler
+			m3_x1 = ring_xmax
+		else:
+			m3_x0 = ring_xmin
+			m3_x1 = x_filler
+
+		if m3_x0 >= m3_x1:
+			print(f"  WARNING: M3 bridge would have zero/negative width on {side} side, skipping")
+			return
+
+		# Create the M3 horizontal stripe
+		odb.createSBoxes(sw, self.m3_layer,
+			[odb.Rect(m3_x0, y0, m3_x1, y1)], "STRIPE")
+
+		# Create Via3 (M3 -> M4) at the ring overlap region
+		via_w = ring_xmax - ring_xmin  # via width = ring width
+		via_h = w                       # via height = bridge width
+		via = self.viagen.get4sz_ext(via_w, via_h, bot_fit='xy', top_fit='xy')
+
+		via_x = (ring_xmin + ring_xmax) // 2
+		via_y = y_center
+		odb.createSBoxes(sw, via, [odb.Point(via_x, via_y)], "STRIPE")
+
+
+	def connect_net(self, net, pad_positions):
+		"""Connect a power net's core ring to the padring via M3 bridges."""
+		ring_left, ring_right = self._find_m4_ring(net)
+		if not ring_left or not ring_right:
+			print(f"  WARNING: No Metal4 core ring found for net '{net.getName()}', skipping")
+			return
+
+		# Find the filler pin X extents on M4 (which is what we need to overlap with)
+		filler_m4_left  = self._find_filler_pin_x(net, 'Metal4', 'left')
+		filler_m4_right = self._find_filler_pin_x(net, 'Metal4', 'right')
+
+		# Also find M3 filler pins (the bridge starts on M3)
+		filler_m3_left  = self._find_filler_pin_x(net, 'Metal3', 'left')
+		filler_m3_right = self._find_filler_pin_x(net, 'Metal3', 'right')
+
+		# Use the outermost filler pin extent that gives us the best reach
+		# M3 bridges can start from wherever the filler has M3 or M4 pins
+		left_start_x  = min(x for x in [filler_m3_left[0],  filler_m4_left[0]]  if x is not None) if any(x is not None for x in [filler_m3_left[0],  filler_m4_left[0]])  else None
+		right_end_x   = max(x for x in [filler_m3_right[1], filler_m4_right[1]] if x is not None) if any(x is not None for x in [filler_m3_right[1], filler_m4_right[1]]) else None
+
+		sw = odb.dbSWire.create(net, "ROUTED")
+
+		net_name = net.getName()
+		print(f"  PadRingPowerStrapper: bridging '{net_name}' with M3 bridges + Via3")
+
+		# Create bridges at each IO power pad Y position
+		for side_name, ring, pad_ys, filler_x in [
+			('left',  ring_left,  pad_positions.get('left', []),  left_start_x),
+			('right', ring_right, pad_positions.get('right', []), right_end_x),
+		]:
+			if filler_x is None:
+				print(f"    WARNING: No filler pin geometry found on {side_name} side for '{net_name}'")
+				continue
+
+			if not pad_ys:
+				print(f"    WARNING: No IO power pads on {side_name} side for '{net_name}'")
+				continue
+
+			for y_pos in pad_ys:
+				# Clamp Y to within the ring's vertical extent
+				y_clamped = max(ring.yMin() + self.BRIDGE_WIDTH, min(y_pos, ring.yMax() - self.BRIDGE_WIDTH))
+				print(f"    {side_name} M3 bridge at Y={y_clamped/1000:.1f}um")
+				self._create_m3_bridge(
+					sw, y_clamped, filler_x,
+					(ring.xMin() + ring.xMax()) // 2,
+					ring.xMin(), ring.xMax(),
+					side_name,
+				)
+
+		# Also create an M4 extension from ring to filler M4 pin overlap
+		# This provides a direct M4 connection at the filler pins
+		# But ONLY within the net's own ring extent (no crossing other rings)
+		for side_name, ring, filler_m4 in [
+			('left',  ring_left,  filler_m4_left),
+			('right', ring_right, filler_m4_right),
+		]:
+			if filler_m4[0] is None or filler_m4[1] is None:
+				continue
+
+			# Check if the filler M4 pin actually overlaps/touches the ring
+			if side_name == 'left':
+				if filler_m4[1] >= ring.xMin():
+					# Filler M4 pin reaches the ring - add small overlap extension
+					x0 = filler_m4[0]
+					x1 = ring.xMax()
+					if x0 < x1:
+						odb.createSBoxes(sw, self.m4_layer,
+							[odb.Rect(x0, ring.yMin(), x1, ring.yMax())], "STRIPE")
+						print(f"    {side_name} M4 overlap extension x={x0/1000:.1f}..{x1/1000:.1f}um")
+			else:
+				if filler_m4[0] <= ring.xMax():
+					x0 = ring.xMin()
+					x1 = filler_m4[1]
+					if x0 < x1:
+						odb.createSBoxes(sw, self.m4_layer,
+							[odb.Rect(x0, ring.yMin(), x1, ring.yMax())], "STRIPE")
+						print(f"    {side_name} M4 overlap extension x={x0/1000:.1f}..{x1/1000:.1f}um")
 
 
 	def run(self):
-		# Find filler cells to use as reference for rail position
-		self.find_padring_fill()
-
-		# Find zones to avoid
-		self.find_padring_obstruction()
+		# Find IO power pad positions (used to place bridges)
+		pad_positions = self._find_io_power_pads()
 
 		# Process power nets
-		pwr_nets = [
-			net for net in self.reader.block.getNets()
-				if net.getSigType() in ['POWER', 'GROUND']
-		]
-
-		for net in pwr_nets:
-			if net.getName() not in ['vgnd', 'vdpwr']:
+		for net in self.reader.block.getNets():
+			net_name = net.getName()
+			if net_name not in ['vgnd', 'vdpwr']:
 				continue
-			self.connect_net(net)
+			if net.getSigType() not in ['POWER', 'GROUND']:
+				continue
+			self.connect_net(net, pad_positions.get(net_name, {}))
 
 
 @click.command()
@@ -1856,11 +1992,9 @@ def route(
 	p = ModulePowerStrapper(reader, tti)
 	p.run()
 
-	## Create the ring power straps
-	#p = RingPowerStrapper(reader)
-	#p.run()
-
-	# Create the padring power straps
+	# CMOS5L: Bridge core PDN rings to IO padring power cells using M3
+	# horizontal bridges with Via3 (M3->M4) at the ring positions.
+	# M3 passes under the M4 concentric rings safely.
 	p = PadRingPowerStrapper(reader)
 	p.run()
 
