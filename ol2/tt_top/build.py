@@ -202,8 +202,7 @@ class TopFlow(SequentialFlow):
 		Checker.WireLength,
 		OpenROAD.RCX,
 		OpenROAD.STAPostPNR,
-		# CMOS5L: Skip IRDropReport (PDN connectivity incomplete without TopMetal2)
-		# OpenROAD.IRDropReport,
+		OpenROAD.IRDropReport,
 		Magic.StreamOut,
 		KLayout.StreamOut,
 		# KLayout.XOR,  # XOR result not checked (Checker.XOR disabled); skip to save build time
