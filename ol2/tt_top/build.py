@@ -350,6 +350,10 @@ if __name__ == '__main__':
 
 		# DRC
 		"MAGIC_DRC_USE_GDS": True,
+		# KLayout 0.30.2 intermittently segfaults in its multithreaded hierarchical DRC
+		# processor on the full chip (null dereference in a worker thread). Single-threaded
+		# DRC is stable and only ~3 minutes slower.
+		"KLAYOUT_DRC_THREADS": 1,
 		"KLAYOUT_DRC_RUNSET": "pdk_dir::libs.tech/klayout/tech/drc/sg13g2_minimal.lydrc",
 
 		# LVS
