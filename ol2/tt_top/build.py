@@ -156,7 +156,7 @@ class TopFlow(SequentialFlow):
 		Checker.WireLength,
 		OpenROAD.RCX,
 		OpenROAD.STAPostPNR,
-		OpenROAD.IRDropReport,
+#		OpenROAD.IRDropReport,   # OpenROAD >= 26Q4: PSM-0043 on straps over macro/pad obstructions
 		Magic.StreamOut,
 		KLayout.StreamOut,
 		KLayout.XOR,
