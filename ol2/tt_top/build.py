@@ -388,6 +388,7 @@ if __name__ == '__main__':
 				"pdk_dir::libs.ref/gf180mcu_fd_sc_mcu7t5v0/lib/gf180mcu_fd_sc_mcu7t5v0__ff_n40C_3v60.lib",
 			],
 		},
+		"KLAYOUT_FILLER_SCRIPT": "dir::klayout_fill/fill_all.rb",
 		"KLAYOUT_FILLER_OPTIONS": {
 			"Metal2_ignore_active": True,
 		},
