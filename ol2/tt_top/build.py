@@ -343,6 +343,9 @@ if __name__ == '__main__':
 		"FP_PDN_CORE_RING_VSPACING" :  1.5,
 		"FP_PDN_CORE_RING_HSPACING" :  1.5,
 
+		# OpenROAD >= 26Q4 rejects a macro grid halo that overlaps rows (PDN-0008)
+		"FP_PDN_VERTICAL_HALO"      :  0,
+
 		# Routing
 		"GRT_ALLOW_CONGESTION"  : True,
 		"GRT_REPAIR_ANTENNAS"   : False,
