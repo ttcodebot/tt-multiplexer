@@ -1842,6 +1842,12 @@ def route(
 	a = AnalogRouter(reader, tti)
 	a.run()
 
+	# The obstructions created above only keep the signal routers out; power
+	# shapes cross them on purpose. Flag them as "except PG nets" so the power
+	# grid checker (OpenROAD >= 26Q4) does not report those crossings as shorts.
+	for obs in reader.block.getObstructions():
+		obs.setExceptPGNetsObstruction()
+
 
 if __name__ == "__main__":
 	route()
